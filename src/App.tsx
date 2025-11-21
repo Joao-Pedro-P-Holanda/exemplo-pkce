@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import './App.css'
 import { LogOut, GitBranch, User, Lock, AlertCircle } from 'lucide-react';
+import { usePKCEAuth } from './auth';
 
 interface GitLabUser {
   id: number;
@@ -24,96 +25,23 @@ declare global {
   }
 }
 
+console.log(import.meta.env.VITE_CLIENT_ID)
+
 function App() {
   const [user, setUser] = useState<GitLabUser | null>(null);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
-  // GitLab configuration
-  const GITLAB_URL = 'https://gitlab.com'; // Change to your GitLab instance
-  const REDIRECT_URI = window.location.origin;
-  const SCOPES = 'read_user';
+  const { login, getToken, error } = usePKCEAuth()
 
+  const gitlab_uri = 'https://gitlab.com';
+  const redirect_uri = window.location.origin;
+  const scopes = ['read_user'];
 
-
-  function randomHash(len: number) {
-    return Array.from(
-      window.crypto.getRandomValues(new Uint8Array(Math.ceil(len / 2))),
-      (b) => ("0" + (b & 0xFF).toString(16)).slice(-2)
-    ).join("")
-  }
-
-  const generateCodeChallenge = async (verifier: string) => {
-    const encoder = new TextEncoder();
-    const data = encoder.encode(verifier);
-    const hash = await crypto.subtle.digest('SHA-256', data);
-    return btoa(String.fromCharCode(...new Uint8Array(hash)))
-      .replace(/\+/g, '-')
-      .replace(/\//g, '_')
-      .replace(/=+$/, '');
-  };
-
-
-  const login = async () => {
-    try {
-      const codeVerifier = randomHash(128);
-      const codeChallenge = await generateCodeChallenge(codeVerifier);
-      const state = randomHash(64);
-
-      // Store verifier and state in sessionStorage
-      sessionStorage.setItem("pkceSession", JSON.stringify({ codeVerifier, state }));
-
-
-      const params = new URLSearchParams({
-        client_id: import.meta.env.VITE_CLIENT_ID,
-        redirect_uri: REDIRECT_URI,
-        response_type: 'code',
-        scope: SCOPES,
-        code_challenge: codeChallenge,
-        code_challenge_method: 'S256',
-        state: state
-      });
-
-      window.location['replace'](`${GITLAB_URL}/oauth/authorize?${params}`);
-    } catch (err: any) {
-      setError('Failed to initiate login: ' + err.message);
-    }
-  };
-
-  // Exchange code for token using PKCE
-  const exchangeCodeForToken = async (code: string, codeVerifier: string) => {
-    try {
-      const params = new URLSearchParams({
-        client_id: import.meta.env.VITE_CLIENT_ID,
-        code: code,
-        grant_type: 'authorization_code',
-        redirect_uri: REDIRECT_URI,
-        code_verifier: codeVerifier
-      });
-
-      const response = await fetch(`${GITLAB_URL}/oauth/token?${params}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error_description || 'Token exchange failed');
-      }
-
-      const data = await response.json();
-      return data.access_token;
-    } catch (err: any) {
-      throw new Error('Failed to exchange code for token: ' + err.message);
-    }
-  };
 
   // Fetch user info
   const fetchUserInfo = async (accessToken: string) => {
     try {
-      const response = await fetch(`${GITLAB_URL}/api/v4/user`, {
+      const response = await fetch(`${gitlab_uri}/api/v4/user`, {
         headers: {
           'Authorization': `Bearer ${accessToken}`
         }
@@ -137,35 +65,30 @@ function App() {
       const errorParam = params.get('error');
 
       if (errorParam) {
-        setError('OAuth error: ' + (params.get('error_description') || errorParam));
         setLoading(false);
         return;
       }
 
       if (code && state) {
 
-        try {
-          const pkceSession = JSON.parse(sessionStorage.getItem("pkceSession") || "null");
+        const pkceSession = JSON.parse(sessionStorage.getItem("pkceSession") || "null");
 
-          if (!pkceSession || pkceSession.state !== state) {
-            throw new Error('Invalid state parameter - possible CSRF attack');
-          }
-
-          const accessToken = await exchangeCodeForToken(code, pkceSession.codeVerifier);
-          const userData = await fetchUserInfo(accessToken);
-
-          // Store token and user in memory only (no localStorage/sessionStorage)
-          window.authSession = { accessToken, user: userData };
-          setUser(userData);
-
-          // Clean up PKCE session
-          sessionStorage.removeItem("pkceSession");
-
-          // Clean up URL
-          window.history.replaceState({}, document.title, window.location.pathname);
-        } catch (err: any) {
-          setError(err.message);
+        if (!pkceSession || pkceSession.state !== state) {
+          throw new Error('Invalid state parameter - possible CSRF attack');
         }
+
+        const accessToken = await getToken(`${gitlab_uri}/oauth/token`, redirect_uri, code, pkceSession.codeVerifier);
+        const userData = await fetchUserInfo(accessToken);
+
+        // Store token and user in memory only (no localStorage/sessionStorage)
+        window.authSession = { accessToken, user: userData };
+        setUser(userData);
+
+        // Clean up PKCE session
+        sessionStorage.removeItem("pkceSession");
+
+        // Clean up URL
+        window.history.replaceState({}, document.title, window.location.pathname);
       } else if (window.authSession) {
         // Restore session from memory
         setUser(window.authSession.user);
@@ -181,7 +104,6 @@ function App() {
     delete window.authSession;
     sessionStorage.removeItem("pkceSession");
     setUser(null);
-    setError(null);
   };
 
   if (loading) {
@@ -205,7 +127,6 @@ function App() {
           <p>{error}</p>
           <button
             onClick={() => {
-              setError(null);
               setLoading(false);
             }}
           >
@@ -226,7 +147,7 @@ function App() {
             Utilizando o fluxo PKCE do Oauth para acessar detalhes da conta Gitlab
           </p>
           <button
-            onClick={login}
+            onClick={() => login(`${gitlab_uri}/oauth/authorize`, redirect_uri, scopes)}
             className="login-button"
           >
             <Lock />
