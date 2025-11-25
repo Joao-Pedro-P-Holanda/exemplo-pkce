@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react'
 import './App.css'
-import { LogOut, GitBranch, User, Lock, AlertCircle } from 'lucide-react';
+import { LogOut, Lock, AlertCircle, Gitlab } from 'lucide-react';
 import { usePKCEAuth } from './auth';
+import Button from '@mui/material/Button';
+import { Avatar, Divider, Grid, Typography } from '@mui/material';
 
 interface GitLabUser {
   id: number;
@@ -125,13 +127,13 @@ function App() {
             <h2>Erro de autenticação</h2>
           </div>
           <p>{error}</p>
-          <button
+          <Button
             onClick={() => {
               setLoading(false);
             }}
           >
             Tentar novamente
-          </button>
+          </Button>
         </div>
       </div>
     );
@@ -139,22 +141,27 @@ function App() {
 
   if (!user) {
     return (
-      <div >
-        <div className="content">
-          <GitBranch />
-          <h1>PKCE com Gitlab</h1>
-          <p>
+      <main style={{ display: "flex", flexDirection: "column", justifyContent: "space-between", height: "100%" }}>
+        <div>
+          <Gitlab size={64} />
+          <Typography variant="h1">PKCE com Gitlab</Typography>
+          <Typography>
             Utilizando o fluxo PKCE do Oauth para acessar detalhes da conta Gitlab
-          </p>
-          <button
+          </Typography>
+        </div>
+
+        <Divider />
+
+        <div>
+          <Button
             onClick={() => login(`${gitlab_uri}/oauth/authorize`, redirect_uri, scopes)}
             className="login-button"
           >
             <Lock />
             Login
-          </button>
+          </Button>
         </div>
-      </div>
+      </main >
     );
   }
 
@@ -164,44 +171,44 @@ function App() {
         <div>
           <div>
             <div>
-              <div>
-                {user.avatar_url && (
-                  <img
-                    src={user.avatar_url}
-                    alt={user.name}
-                  />
-                )}
-                <div>
-                  <h2>{user.name}</h2>
-                  <p>@{user.username}</p>
-                </div>
-              </div>
-              <button onClick={logout}>
+              {user.avatar_url && (
+                <Avatar
+                  sx={{ width: 24, height: 24 }}
+                  src={user.avatar_url}
+                  alt={user.name}
+                />
+              )}
+              <Button onClick={logout}>
                 <LogOut />
                 Logout
-              </button>
+              </Button>
+
+              <div>
+                <Typography variant="h2">{user.name}</Typography>
+                <Typography variant="body1">@{user.username}</Typography>
+              </div>
             </div>
           </div>
           <div>
-            <h3>
-              <User />
+            <Typography variant="h4">
               Informação do perfil
-            </h3>
-            <div>
+            </Typography>
+            <Divider />
+            <Grid>
               <div>
-                <p>Email</p>
+                <Typography variant="h5">Email</Typography>
                 <p>{user.email || 'Não informado'}</p>
               </div>
               <div>
-                <p>ID</p>
+                <Typography variant="h5">ID</Typography>
                 <p>{user.id}</p>
               </div>
               <div>
-                <p>Estado</p>
+                <Typography variant='h5'>Status</Typography>
                 <p>{user.state || 'Não informado'}</p>
               </div>
               <div>
-                <p>URL do perfil</p>
+                <Typography variant="h5">URL do perfil</Typography>
                 <a
                   href={user.web_url}
                   target="_blank"
@@ -210,7 +217,7 @@ function App() {
                   Ver perfil
                 </a>
               </div>
-            </div>
+            </Grid>
             {user.bio && (
               <div>
                 <p>Bio</p>
