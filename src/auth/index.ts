@@ -40,7 +40,7 @@ export function usePKCEAuth() {
       });
 
       if (Array.isArray(scopes) && scopes?.length) {
-        scopes.forEach(scope => params.append("scope", scope))
+        params.append("scope", scopes.join(" "))
       }
 
       window.location['assign'](`${url}?${params}`);
@@ -73,7 +73,7 @@ export function usePKCEAuth() {
       }
 
       const data = await response.json();
-      return data.access_token;
+      return { accessToken: data.access_token, scopes: data.scope.split(" ") };
     } catch (err: any) {
       throw new Error('Failed to exchange code for token: ' + err.message);
     }
