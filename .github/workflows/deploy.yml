@@ -18,7 +18,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     env:
-      CLIENT_ID: ${{ secrets.CLIENT_ID}}
+      VITE_CLIENT_ID: ${{ secrets.CLIENT_ID}}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
