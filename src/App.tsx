@@ -50,7 +50,7 @@ function App() {
   const { login, getToken, error } = usePKCEAuth();
 
   const gitlab_uri = 'https://gitlab.com';
-  const redirect_uri = window.location.origin;
+  const redirect_uri = window.location.href;
   const profile_scopes = ['read_user'];
   const repo_scopes = ['read_user', 'write_repository', 'api'];
 
