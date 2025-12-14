@@ -1,73 +1,61 @@
-# React + TypeScript + Vite
+# Implementação de OAuth 2.0 com PKCE em uma SPA Segura
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+## Objetivo do Projeto
+Este projeto tem como objetivo desenvolver uma **Single Page Application (SPA)** segura utilizando o fluxo **OAuth 2.0 Authorization Code com PKCE**, demonstrando conceitos fundamentais de segurança em aplicações web, tais como autenticação segura para clientes públicos, controle de autorização por escopos e boas práticas no gerenciamento de tokens.
 
-Currently, two official plugins are available:
+## Cenário Escolhido
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- **Provedor de Autenticação:** GitLab OAuth 2.0  
+- **API Externa:** GitLab API  
 
-## React Compiler
+O GitLab atua simultaneamente como **Authorization Server** e **Resource Server**, permitindo autenticação de usuários e acesso controlado a recursos relacionados a repositórios.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Perfis de Usuário e Escopos
 
-## Expanding the ESLint configuration
+Foram implementados dois perfis de usuário, diferenciados por escopos OAuth:
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+### Usuário (Viewer)
+- **Escopo:** `read_user`  
+- **Permissão:** acesso somente a informações de leitura do perfil.
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+### Manager
+- **Escopos:** `read_user`, `write_repository`  
+- **Permissões:** leitura do perfil e criação/gerenciamento de repositórios.
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+Essa separação permite demonstrar, de forma objetiva, o controle de autorização baseado em escopos.
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+## Funcionalidades
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+- Autenticação via GitLab OAuth 2.0  
+- Obtenção de token de acesso com **Authorization Code Flow + PKCE**  
+- Listagem de informações do usuário autenticado  
+- Criação de repositórios (restrita ao perfil Manager)  
+- Interface adaptada dinamicamente conforme os escopos concedidos  
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+## Fluxo OAuth 2.0 com PKCE
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+A implementação do fluxo segue as boas práticas recomendadas para SPAs:
+
+- **Geração do PKCE:** criação de `code_verifier`, geração do `code_challenge` (SHA-256) e armazenamento temporário no `sessionStorage`.  
+- **Redirecionamento:** envio do usuário ao endpoint de autorização do GitLab com `code_challenge` e `state`.  
+- **Proteção contra CSRF:** geração e validação do parâmetro `state`.  
+- **Troca de Token:** envio do `code` e do `code_verifier` ao endpoint `/token` para obtenção do `access_token`, sem uso de `client_secret`.
+
+## Controle de Autorização
+
+Após a autenticação, os escopos concedidos são analisados e utilizados para renderização condicional da interface:
+
+- Funcionalidades de leitura são exibidas apenas para usuários com `read_user`.  
+- Funcionalidades de escrita e gerenciamento são exibidas apenas para usuários com `write_repository`.
+
+## Conclusão
+
+O projeto atende aos requisitos da disciplina de **Segurança**, evidenciando:
+
+- Implementação correta do OAuth 2.0 com PKCE em uma SPA;  
+- Uso do parâmetro `state` como proteção contra CSRF;  
+- Controle de acesso baseado em escopos OAuth;  
+- Aplicação de boas práticas de segurança para clientes públicos.  
+
+A solução demonstra a importância do uso adequado de mecanismos modernos de autenticação e autorização em aplicações web sem backend próprio.
+
